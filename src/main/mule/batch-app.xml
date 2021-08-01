@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<file:config name="File_Config1" doc:name="File Config" doc:id="7f757c14-a4e0-449b-b907-5a1e6dd2a2d4" >
+		<file:connection workingDir="C:\Users\om\Documents\batch-output" />
+	</file:config>
+	<file:config name="File_Config2" doc:name="File Config" doc:id="fac4c2b0-c1d4-4720-8a22-a7b468c0accc" >
+		<file:connection workingDir="C:\Users\om\Documents\batch-output" />
+	</file:config>
+	<flow name="batch-appFlow" doc:id="0bb62dce-b202-4ef2-a184-47c3884a4ea0" >
+		<http:listener doc:name="Listener" doc:id="22249ab9-1180-40b4-814d-89294ac0c964" config-ref="HTTP_Listener_config" path="/bat"/>
+		<logger level="INFO" doc:name="Logger" doc:id="2cc165bc-547c-4dc4-957a-5ae299a09040" />
+		<set-payload value='#[[1,2,3,4,5,1,1,"a","b","c",6,7,8,9]]' doc:name='[1,2,3,4,5,1,1,"a","b","c"]' doc:id="d657b3a7-ea26-4496-9ee1-1842de439093" />
+		<batch:job jobName="batch-appBatch_Job" doc:id="b6832bf4-8de4-4f29-b0a2-5be463022342" maxFailedRecords="5">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="7c825606-2cb2-4bef-b892-6365e9ac30dc" >
+					<set-variable value="#[payload]" doc:name="Set Variable" doc:id="22165af4-0ca1-4ded-941b-e49946e323aa" variableName="batchvar"/>
+					<set-payload doc:name="Set Payload" doc:id="17a82818-45ff-4927-938a-452fcaa04174" value="#[payload as Number * 10]"/>
+					<file:write doc:name="Write" doc:id="d73af15c-6469-42a1-89f0-50c5628d40cb" config-ref="File_Config1" path="successrecords.csv">
+						<file:content ><![CDATA[#[output application/json --- 
+{
+	vendor:"Acme" ++ payload,
+	batchVar: vars.batchvar
+}]]]></file:content>
+					</file:write>
+					<logger level="INFO" doc:name="Logger" doc:id="3524ae4f-4cb8-478b-a856-dceae43b400d" message="#[payload]"/>
+				</batch:step>
+				<batch:step name="Batch_Step1" doc:id="d9615c38-d7aa-4ba9-a337-9731adc5e8af" acceptPolicy="ALL">
+					<set-variable value="#[vars.batchvar + 10]" doc:name="Set Variable" doc:id="e00a1fa9-4714-4089-b1c5-b712bd4da04a" variableName="batchvar"/>
+					<set-payload value="#[payload]" doc:name="Copy_of_Set Payload" doc:id="9f661ab3-a0c2-4b1a-a9e2-2b50ba1d2906" />
+					<until-successful maxRetries="5" doc:name="Until Successful" doc:id="c30313a6-07fe-4225-9888-25b1e69a6d18" >
+						<file:write doc:name="Copy_of_Write" doc:id="5ebb36e8-5454-4e9b-895a-080fc6cdf9cc" config-ref="File_Config1" path="failedRecords.csv">
+						<file:content><![CDATA[#[output application/json --- 
+{
+	vendor:"Acme" ++ payload,
+	batchVar: vars.batchvar
+}]]]></file:content>
+					</file:write>
+					</until-successful>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="79bd085b-4757-44ab-8685-cb774a970fab" message="#[payload]"/>
+			</batch:on-complete>
+		</batch:job>
+		<ee:transform doc:name="Transform Message" doc:id="8a085da6-8089-4bf6-95e8-95f73c3a8480" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write" doc:id="c8adcd13-0570-4127-85f4-f6b6f490f07a" config-ref="File_Config2" path="finalPayload.json">
+			<file:content ><![CDATA[#[output application/json ---
+payload]]]></file:content>
+		</file:write>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="1c54a2a4-43b5-491d-b372-bac59ad44338" >
+				<file:write doc:name="Write" doc:id="17774254-04d4-4afa-a19f-a7a9a1ba57d8" config-ref="File_Config1" path="errorFailed.json">
+					<file:content ><![CDATA[#[output application/json --- payload]]]></file:content>
+				</file:write>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
