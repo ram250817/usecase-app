@@ -1,121 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
-http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
-http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
-	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="4f2958d6-ffdc-458f-b487-9f0297ca91e3" >
-		<http:listener-connection host="0.0.0.0" port="8081" />
-	</http:listener-config>
-	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="a53bea7d-d8f2-4472-9a07-76abe2ab71e7" >
-		<http:request-connection host="localhost" port="8081" >
-		</http:request-connection>
-	</http:request-config>
-	<flow name="usecase-appFlow" doc:id="b1443013-4235-4b53-97f7-d0f0797747bf" >
-		<http:listener doc:name="Listener" doc:id="ce8c578c-0f99-4c48-a926-1beede964de4" config-ref="HTTP_Listener_config" path="/dynamicParamPassing"/>
-		<set-payload value="#[(attributes.queryString splitBy(/^*[=.&amp;]/))]" doc:name="Set Payload" doc:id="b31d12b4-64be-419f-b14d-1df56cea1927" />
-		<ee:transform doc:name="Transform Message" doc:id="1fd4229e-8f7b-4245-bea5-429f6105131f">
-			<ee:message>
-				<ee:set-payload><![CDATA[%dw 2.0
-output application/json
-
----
-{
-((attributes.queryString splitBy("="))[0] ): (attributes.queryString splitBy("="))[1],
-((attributes.queryString splitBy("="))[2] ): (attributes.queryString splitBy("="))[3]
-}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-		<http:request method="GET" doc:name="Request" doc:id="2bc60d9a-d852-47dd-b41a-bcd0acf43c92" config-ref="HTTP_Request_configuration" url="usecase-appFlow1"/>
-		<ee:transform doc:name="Transform Message" doc:id="0797c478-2d36-4475-b655-b41ccb7219ec">
-			<ee:message>
-				<ee:set-payload><![CDATA[%dw 2.0
-output application/xlsx
----
-order:payload.sale.*item map (item,Index) -> {
- 	index:Index,
- 	sale:item.@saleId,
- 	itemname:item.item,
- 	itemprice:(item.quantity * item.price),
- 	itemId:item.@orderId
-	}
-]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="4fd57834-b82d-4dfc-8535-879198a5288e" message="#[payload]"/>
-	</flow>
-	<flow name="usecase-appFlow4" doc:id="4f7d23f6-6398-4849-a874-028e587deb9d" >
-		<ee:transform doc:name="Transform Message" doc:id="7e75501c-a907-4d20-9582-eb8626db69d1" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/xml
-var con = [592,972]
----
-trains:{
-	(con map(con,Index) -> train: {
-			engineerId: con
-		}
-	
-)}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-	</flow>
-	<flow name="usecase-appFlow2" doc:id="f00252cd-77ec-44c5-938c-3f97fab716d3" initialState="stopped">
-		<http:listener doc:name="Listener" doc:id="6cff1061-c9f6-4fee-b231-0120463d10da" config-ref="HTTP_Listener_config" path="/httpreq"/>
-		<set-payload value='#["piano padigree"]' doc:name="Set Payload" doc:id="471021f1-3c5b-4547-9a92-54f92daf59f8" />
-		<set-variable value="producer" doc:name="Set Variable" doc:id="4cf766a6-9878-4c34-a2a8-863cf6173ea9" variableName="producer"/>
-		<http:request method="POST" doc:name="Request" doc:id="450e4bba-b71e-478e-ba06-ef125d5fdd78" config-ref="HTTP_Request_configuration" path="/request"/>
-		<logger level="INFO" doc:name="Logger" doc:id="a467c863-7454-4598-959f-e3fc12496902" message="payload"/>
-	</flow>
-	<flow name="useCase-appFlow1" doc:id="20225f1b-e608-4b68-b5c8-dde51f2d30bc" >
-		<http:listener doc:name="setto xml" doc:id="ff9cfad7-0b61-4aec-85cb-3a84c1cdbf7a" config-ref="HTTP_Listener_config" path="/*"/>
-		<set-payload value='#[output application/json&#10;---&#10;{&#10;	Order: attributes.uriParams.orderId,&#10;orderType:attributes.queryParams.orderType&#10;}]' doc:name="Set Payload" doc:id="12685874-1000-4077-8e7b-191dcdc56cd3" />
-		<logger level="INFO" doc:name="Logger" doc:id="424f7ca9-31e9-45a5-8260-d4523989ace2" message="#[payload]"/>
-	</flow>
-	<flow name="useCase-appFlow2" doc:id="1348ce58-b7aa-46d8-87c1-9cbd3defe94e" >
-		<set-payload doc:name="Set Payload" doc:id="0efff9cf-6f37-47ca-849f-2259745ad09f" value="#[output application/json ---&#10;order:&#10;{&#10;	item:&#10;	{&#10;		itemname:payload.item as String default [],&#10;	itemType:payload.itemType as String default[],&#10;	price:payload.price as String default []&#10;	}&#10;}]"/>
-		<logger level="INFO" doc:name="Logger" doc:id="2c9b4208-16bc-462d-a94d-9a8a9e12f0e7" message="#[payload]"/>
-	</flow>
-	<flow name="usecase-appFlow3" doc:id="cf676e6c-3cd1-4f45-8135-c5f19319754d">
-		<http:listener doc:name="Listener" doc:id="890edfc1-1d7b-46c3-bc94-65cdbf5cd106" config-ref="HTTP_Listener_config" path="/batch"/>
-		<set-payload value='#[["apple","banana"]]' doc:name='["apple","banana"]' doc:id="c117dbfc-5e7a-4389-a8ee-6d1f56f0e1fc" />
-		<set-variable value="10" doc:name="Set Variable" doc:id="4fcf441b-4a1f-4cf1-9920-cb24d893b272" variableName="stepCounter"/>
-		<batch:job jobName="usecase-appBatch_Job" doc:id="55fb0aab-2a96-4a00-b8b9-6ceadb10cb4f" >
-			<batch:process-records >
-				<batch:step name="Batch_Step" doc:id="a97ec7a3-b127-448e-a3db-1ad80061941a" >
-					<set-payload value="#[payload ++ 1]" doc:name="payload ++ 1" doc:id="32585568-dcf9-48e2-8464-f56a633b4190" />
-				</batch:step>
-				<batch:step name="Batch_Step1" doc:id="0bffccf6-abf6-4b17-8602-41acaba9a08a" >
-					<set-payload value='#[payload ++ 2]' doc:name='payload ++ 2' doc:id="12583c61-92fc-4bcd-881b-8104ee16222b" />
-					<set-variable value="#[vars.stepCounter + 1]" doc:name="Set Variable" doc:id="abbce459-aed0-43ab-8dfb-5aaca5352ce7" variableName="stepCounter"/>
-				</batch:step>
-			</batch:process-records>
-			<batch:on-complete >
-				<logger level="INFO" doc:name="Logger" doc:id="1ffb3741-1895-45c8-ad6d-6458d232c33f" message="#[vars.stepCounter]"/>
-			</batch:on-complete>
-		</batch:job>
-	</flow>
-	<sub-flow name="errorHandling" doc:id="b3bab371-e8de-4049-a01e-7a95543a4b7f">
-		<try doc:name="Try" doc:id="d662c1e4-458a-4d0e-a7f5-1ab4ae7841d0" >
-			<validation:is-null doc:name="Is null" doc:id="8157b283-74c6-4ee4-8f52-04905b845010" value="#[payload]"/>
-			<error-handler >
-				<on-error-continue enableNotifications="true" logException="true" doc:name="on-error-continue" doc:id="91c1f8b0-4e3e-4651-80bd-738462fc031e">
-			<set-payload value='#["error1"]' doc:name='"error1"' doc:id="b341778e-6291-4ed9-8940-1446200ee265" />
-				</on-error-continue>
-			</error-handler>
-		</try>
-	</sub-flow>
-	<flow name="usecase-appFlow1" doc:id="ff496505-63c6-411a-a0f2-b04dc71bf55d" >
-		<http:listener doc:name="Listener" doc:id="c9b3cf52-e0be-4317-900f-2913dfb47af7" config-ref="HTTP_Listener_config" path="/order/ "/>
-		<flow-ref doc:name="Flow Reference" doc:id="9158af52-18bc-4d81-92a8-8781a038072e" name="errorHandling"/>
-		<set-payload value='#["end"]' doc:name="Set Payload" doc:id="5194f538-fb59-4d53-b1ed-2190d9a459e0" />
-		<error-handler >
-			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error propagate" doc:id="54caad25-2a97-4c08-bac7-089e29e93324" >
-				<set-payload value='#["Error2"]' doc:name="Set Payload" doc:id="38eb0e99-b95b-4db6-9ee9-203ea7ee26a0" />
-			</on-error-propagate>
-		</error-handler>
-	</flow>
-</mule>
